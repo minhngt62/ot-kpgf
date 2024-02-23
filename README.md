@@ -1,2 +1,1 @@
-# ot-keypoint_guided-factorization
-Keypoint-guided Factorization for Optimal Transport
+# Keypoint-guided Factorization for Optimal Transport
