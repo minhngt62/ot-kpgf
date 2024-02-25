@@ -1,1 +1,1 @@
-from .kpgf import KeypointFOT, KeypointKantorovichFOT
+from .kpg_f import KeypointFOT, KeypointKantorovichFOT
