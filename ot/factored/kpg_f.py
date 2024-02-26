@@ -16,8 +16,8 @@ class KeypointFOT:
         sinkhorn_reg: float = 0.001, temperature: float = 0.1, div_term: float = 1e-10, #guide_mixing: float = 0.95,
         stop_thr: float = 1e-7, max_iters: int = 1000
     ):
-        self.X = Xs
-        self.Y = Xt
+        self.X = Xs # <-- may require normalized
+        self.Y = Xt # <-- may require normalized
         self.p = a
         self.q = b
         self.Z, self.h = self._init_anchors(k + len(K))
@@ -146,7 +146,8 @@ class KeypointFOT:
         CXt_kp = CXt[:, J]
         R1 = softmax(-2 * CXs_kp / temperature)
         R2 = softmax(-2 * CXt_kp / temperature)
-        return js_div(R1, R2)
+        G = js_div(R1, R2)
+        return G / G.max()
 
 
 class KeypointKantorovichFOT(KeypointFOT):
