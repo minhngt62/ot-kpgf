@@ -16,7 +16,7 @@ def gaussMixture_meanRandom_covWishart(
 
     # Generate random means for each cluster
     if means is None:
-        means = np.random.randn((k, d))
+        means = np.random.randn(k, d)
     
     # Sample covariance matrices from a Wishart distribution
     if covs is None:
@@ -37,5 +37,5 @@ def gaussMixture_meanRandom_covWishart(
     # Randomly project data points to a 5-dimensional subspace
     proj_mat = np.ones((d, d))
     if d_proj is not None:
-        proj_mat = np.random.randn((d, d_proj))
+        proj_mat = np.random.randn(d, d_proj)
     return np.dot(X, proj_mat), y, means
