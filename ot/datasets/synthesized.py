@@ -11,6 +11,7 @@ def gaussMixture_meanRandom_covWishart(
     d_proj: Optional[int] = 5,
     means: Optional[np.ndarray] = None,
     covs: Optional[Union[np.ndarray, List]] = None,
+    noise: int = 0,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     assert n % k == 0, "Each clusters should have equal number of samples."
 
@@ -27,11 +28,13 @@ def gaussMixture_meanRandom_covWishart(
     
     # Generate data points for each cluster
     X, y = [], []
+    gauss_noise = np.random.randn(k, d)
     for i in range(k):
         Xi = np.random.multivariate_normal(means[i], covs[i], size=(n // k - 1))
-        Xi = np.concatenate((means[i][None, :], Xi))
+        Xi = np.concatenate((means[i][None, :], Xi)) + noise * np.repeat(gauss_noise[i].reshape(1, -1), n//k, axis=0)
         X.append(Xi) # (n, d)
         y.append(i * np.ones(n // k))
+        means[i] = Xi[0]
     X, y = np.concatenate(X), np.concatenate(y)
 
     # Randomly project data points to a 5-dimensional subspace
