@@ -28,10 +28,10 @@ def gaussMixture_meanRandom_covWishart(
     # Generate data points for each cluster
     X, y = [], []
     for i in range(k):
-        Xi = np.random.multivariate_normal(means[i], covs[i], size=n)
+        Xi = np.random.multivariate_normal(means[i], covs[i], size=(n // k - 1))
         Xi = np.concatenate((means[i][None, :], Xi))
         X.append(Xi) # (n, d)
-        y.append(i * np.ones(n // k + 1))
+        y.append(i * np.ones(n // k))
     X, y = np.concatenate(X), np.concatenate(y)
 
     # Randomly project data points to a 5-dimensional subspace
