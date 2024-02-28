@@ -147,7 +147,7 @@ class KeypointFOT:
         R1 = softmax(-2 * CXs_kp / temperature)
         R2 = softmax(-2 * CXt_kp / temperature)
         G = js_div(R1, R2)
-        return G / G.max()
+        return G / (G.max() + self.div_term)
 
 
 class KeypointKantorovichFOT(KeypointFOT):
