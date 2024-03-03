@@ -21,7 +21,7 @@ class KeypointFOT(_OT):
         stop_thr: float = 1e-7, 
         max_iters: int = 1000
     ):
-        super().__init__(self, distance)
+        super().__init__(distance)
         self.sim_fn = similarity
 
         self.k = n_free_anchors
@@ -204,7 +204,7 @@ class FOT(_OT):
         max_iters: int = 1000,
         div_term: float = 1e-10
     ):
-        super().__init__(self, distance)
+        super().__init__(distance)
         
         self.n_anchors = n_anchors
         self.eps = sinkhorn_reg
@@ -263,9 +263,9 @@ class FOT(_OT):
     
 # @deprecated: Adopt from https://github.com/nerdslab/latentOT/blob/main/python_demo/utils.py
 class LOT(_OT):
-    def __init__(self, distance: Distance, n_source_anchors, n_target_anchors, epsilon=1, epsilon_z=1, intensity=[10, 10, 10], floyditer=50,
+    def __init__(self, distance: Optional[Distance], n_source_anchors, n_target_anchors, epsilon=1, epsilon_z=1, intensity=[10, 10, 10], floyditer=50,
                  tolratio=1e-7, norm=2, random_state=None):
-        super().__init__(self, distance)
+        super().__init__(distance)
         self.n_source_anchors, self.n_target_anchors = n_source_anchors, n_target_anchors
 
         self.epsilon = epsilon
