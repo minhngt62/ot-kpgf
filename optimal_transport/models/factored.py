@@ -204,7 +204,7 @@ class FOT(_OT):
         max_iters: int = 1000,
         div_term: float = 1e-10
     ):
-        super.__init__(self, distance)
+        super().__init__(self, distance)
         
         self.n_anchors = n_anchors
         self.eps = sinkhorn_reg

@@ -12,7 +12,7 @@ class EMD(_OT):
         max_iters: int = 10000,
         div_term : int = 1e-10
     ):
-        super.__init__(self, distance)
+        super().__init__(self, distance)
         self.P_: Optional[np.ndarray] = None
         self.max_iters = max_iters
         self.div_term = div_term
