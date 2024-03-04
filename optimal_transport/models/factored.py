@@ -44,6 +44,7 @@ class KeypointFOT(_OT):
         a: Optional[np.ndarray],
         b: Optional[np.ndarray],
         K: List[Tuple],
+        **kwargs,
     ) -> "KeypointFOT":
         z, h = self._init_anchors(xs, self.k + len(K))
         I, L, J = self._init_keypoint_inds(K)
@@ -70,6 +71,7 @@ class KeypointFOT(_OT):
         self,
         xs: np.ndarray,
         xt: np.ndarray,
+        **kwargs,
     ) -> np.ndarray:
         n = xs.shape[0]
         m = xt.shape[0]
@@ -223,6 +225,7 @@ class FOT(_OT):
         xt: np.ndarray,
         a: Optional[np.ndarray],
         b: Optional[np.ndarray],
+        **kwargs,
     ) -> "FOT":
         z0 = self._init_anchors(xs, self.n_anchors)
         self.Pa_, self.Pb_, self.z_ = ot.factored.factored_optimal_transport(
@@ -240,6 +243,7 @@ class FOT(_OT):
         self,
         xs: np.ndarray,
         xt: np.ndarray,
+        **kwargs,
     ) -> np.ndarray:
         n = xs.shape[0]
         m = xt.shape[0]
@@ -290,7 +294,7 @@ class LOT(_OT):
                                   p), axis=-1)
         return cost_matrix
 
-    def fit(self, source: np.ndarray, target: np.ndarray) -> np.ndarray:
+    def fit(self, source: np.ndarray, target: np.ndarray, **kwargs) -> np.ndarray:
         # centroid initialized by K-means
         Cx = LOT.compute_kmeans_centroids(source, n_clusters=self.n_source_anchors, random_state=self.random_state)
         Cy = LOT.compute_kmeans_centroids(target, n_clusters=self.n_target_anchors, random_state=self.random_state)
@@ -396,7 +400,7 @@ class LOT(_OT):
         Cy = sol[:, self.n_source_anchors:self.n_source_anchors + self.n_target_anchors].T
         return Cx, Cy
 
-    def transport(self, source, target) -> np.ndarray:
+    def transport(self, source, target, **kwargs) -> np.ndarray:
         n = source.shape[0]
         m = target.shape[0]
         Cx_lot = self.Px_.T.dot(source) / (self.Px_.T.dot(np.ones([n, 1])) + 10 ** -20)

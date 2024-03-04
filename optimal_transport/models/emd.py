@@ -24,6 +24,7 @@ class EMD(_OT):
         xt: np.ndarray,
         a: Optional[np.ndarray],
         b: Optional[np.ndarray],
+        **kwargs,
     ) -> "EMD":
         C = self.dist_fn(xs, xt)
         C = C / (C.max() + self.div_term)
@@ -35,6 +36,7 @@ class EMD(_OT):
         self,
         xs: np.ndarray,
         xt: np.ndarray,
+        **kwargs,
     ) -> np.ndarray:
         m = xt.shape[0]
         assert self.P_ is not None, "Should run fit() before mapping"
