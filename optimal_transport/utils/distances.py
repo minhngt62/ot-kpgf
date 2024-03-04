@@ -6,6 +6,7 @@ class Distance(type):
         cls,
         x: np.ndarray,
         y: np.ndarray,
+        **kwargs,
     ) -> np.ndarray:
         pass
 
@@ -32,7 +33,7 @@ class JSDiv(Distance):
         cls,
         x: np.ndarray,
         y: np.ndarray,
-        eps: 1e-10
+        eps: int = 1e-10
     ) -> np.ndarray:
         x = np.expand_dims(x, axis=1)
         y = np.expand_dims(y, axis=0)
