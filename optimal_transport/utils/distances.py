@@ -1,9 +1,9 @@
 import numpy as np
 from typing import Optional, Union
 
-class Distance:
-    @staticmethod
-    def __call__(
+class Distance(type):
+    def __new__(
+        cls,
         x: np.ndarray,
         y: np.ndarray,
     ) -> np.ndarray:
@@ -11,16 +11,16 @@ class Distance:
 
 
 class SquaredEuclidean(Distance):
-    @staticmethod
-    def __call__(
+    def __new__(
+        cls,
         x: np.ndarray,
         y: np.ndarray
     ) -> np.ndarray:
         return np.expand_dims((x**2).sum(axis=1),1) + np.expand_dims((y**2).sum(axis=1),0) - 2 * x@y.T
     
 class KLDiv(Distance):
-    @staticmethod
-    def __call__(
+    def __new__(
+        cls,
         x: np.ndarray,
         y: np.ndarray,
         eps: 1e-10
@@ -28,8 +28,8 @@ class KLDiv(Distance):
         return np.sum(x * np.log(x + eps) - x * np.log(y + eps), axis=-1)
     
 class JSDiv(Distance):
-    @staticmethod
-    def __call__(
+    def __new__(
+        cls,
         x: np.ndarray,
         y: np.ndarray,
         eps: 1e-10
