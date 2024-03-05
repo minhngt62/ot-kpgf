@@ -206,7 +206,8 @@ class FOT(_OT):
         sinkhorn_reg: float = 0.001, 
         stop_thr: float = 1e-7, 
         max_iters: int = 1000,
-        div_term: float = 1e-10
+        div_term: float = 1e-10,
+        sinkhorn_method: str = "sinkhorn_log"
     ):
         super().__init__(distance)
         
@@ -215,6 +216,7 @@ class FOT(_OT):
         self.stop_thr = stop_thr
         self.max_iters = max_iters
         self.div_term = div_term
+        self.sinkhorn_method = sinkhorn_method
 
         self.Pa_: Optional[np.ndarray] = None
         self.Pb_: Optional[np.ndarray] = None
@@ -236,7 +238,8 @@ class FOT(_OT):
             reg=self.eps,
             r=self.n_anchors,
             stopThr=self.stop_thr,
-            numItermax=self.max_iters
+            numItermax=self.max_iters,
+            method=self.sinkhorn_method
         )
 
         return self
