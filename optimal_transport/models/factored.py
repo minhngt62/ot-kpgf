@@ -117,7 +117,8 @@ class KeypointFOT(_OT):
         Ps: np.ndarray, 
         Pt: np.ndarray
     ) -> np.ndarray:
-        z = 0.5 * (np.matmul((Ps).T, xs) + np.matmul(Pt, xt)) * len(z)
+        assert self.z_ is not None, "_init_anchors() did not run properly."
+        z = 0.5 * (np.matmul((Ps).T, xs) + np.matmul(Pt, xt)) * len(self.z_)
         return z
     
     def _update_plans(
