@@ -55,7 +55,7 @@ class KeypointFOT(_OT):
             Cs, Ct = self._compute_cost_matrices(xs, xt, z, I, L, J)
             Ps = self._update_plans(a, h, Cs, Ms)
             Pt = self._update_plans(h, b, Ct, Mt)
-            z = self._update_anchors(Ps, Pt)
+            z = self._update_anchors(xs, xt, Ps, Pt)
 
             err = np.sqrt(np.sum(np.square(z - self.z_), axis=1)).sum()
             self.z_ = z
@@ -113,11 +113,12 @@ class KeypointFOT(_OT):
     
     def _update_anchors(
         self, 
+        xs: np.ndarray, xt: np.ndarray,
         Ps: np.ndarray, 
         Pt: np.ndarray
     ) -> np.ndarray:
-        Z = 0.5 * (np.matmul((Ps).T, self.X) + np.matmul(Pt, self.Y)) * len(self.Z)
-        return Z
+        z = 0.5 * (np.matmul((Ps).T, xs) + np.matmul(Pt, xt)) * len(z)
+        return z
     
     def _update_plans(
         self,
