@@ -299,7 +299,7 @@ class LOT(_OT):
                                   p), axis=-1)
         return cost_matrix
 
-    def fit(self, source: np.ndarray, target: np.ndarray, **kwargs) -> np.ndarray:
+    def fit(self, source: np.ndarray, target: np.ndarray, a=None, b=None, **kwargs) -> np.ndarray:
         # centroid initialized by K-means
         Cx = LOT.compute_kmeans_centroids(source, n_clusters=self.n_source_anchors, random_state=self.random_state)
         Cy = LOT.compute_kmeans_centroids(target, n_clusters=self.n_target_anchors, random_state=self.random_state)
