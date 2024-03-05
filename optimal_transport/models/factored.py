@@ -48,7 +48,7 @@ class KeypointFOT(_OT):
     ) -> "KeypointFOT":
         z, h = self._init_anchors(xs, self.k + len(K))
         I, L, J = self._init_keypoint_inds(K)
-        Ms, Mt = self._init_masks(xs, xt, I, L, J)
+        Ms, Mt = self._init_masks(xs, z, xt, I, L, J)
 
         self.z_ = z
         for i in range(self.max_iters):
@@ -104,11 +104,11 @@ class KeypointFOT(_OT):
     
     def _init_masks(
         self,
-        xs: np.ndarray, xt: np.ndarray,
+        xs: np.ndarray, z: np.ndarray, xt: np.ndarray,
         I: np.ndarray, L: np.ndarray, J: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
-        Ms = self._guide_mask(xs, xt, I, L)
-        Mt = self._guide_mask(xs, xt, L, J)
+        Ms = self._guide_mask(xs, z, I, L)
+        Mt = self._guide_mask(z, xt, L, J)
         return Ms, Mt
     
     def _update_anchors(
