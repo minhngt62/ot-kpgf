@@ -14,10 +14,10 @@ class KeypointFOT(_OT):
         distance: Distance = SquaredEuclidean,
         similarity: Distance = JSDiv,
         n_free_anchors: Optional[int] = None,
-        sinkhorn_reg: float = 0.001, 
+        sinkhorn_reg: float = 0.004, 
         temperature: float = 0.1, 
         div_term: float = 1e-10, 
-        guide_mixing: float = 0.05,
+        guide_mixing: float = 0.6,
         stop_thr: float = 1e-7, 
         max_iters: int = 1000
     ):
@@ -297,7 +297,7 @@ class LOT(_OT):
         cost_matrix = np.sum(np.power(source.reshape([source.shape[0], 1, source.shape[1]]) -
                                   target.reshape([1, target.shape[0], target.shape[1]]),
                                   p), axis=-1)
-        return cost_matrix
+        return cost_matrix / (cost_matrix.max() + 1e-10)
 
     def fit(self, source: np.ndarray, target: np.ndarray, a=None, b=None, **kwargs) -> np.ndarray:
         # centroid initialized by K-means
