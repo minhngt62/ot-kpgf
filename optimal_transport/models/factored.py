@@ -16,7 +16,7 @@ class KeypointFOT(_OT):
         n_free_anchors: Optional[int] = None,
         sinkhorn_reg: float = 0.004, 
         temperature: float = 0.1, 
-        div_term: float = 1e-20, 
+        div_term: float = 1e-10, 
         guide_mixing: float = 0.6,
         stop_thr: float = 1e-5, 
         max_iters: int = 1000
@@ -126,6 +126,8 @@ class KeypointFOT(_OT):
         p: np.ndarray, q: np.ndarray,
         C: np.ndarray, mask: np.ndarray,
     ) -> np.ndarray:
+        C = C / (C.max() + self.div_term)
+
         def M(u, v):
             "Modified cost for logarithmic updates"
             "$M_{ij} = (-c_{ij} + u_i + v_j) / \epsilon$"
@@ -160,7 +162,6 @@ class KeypointFOT(_OT):
     ) -> Tuple[np.ndarray, np.ndarray]:
         Cx = self.dist_fn(xs, z)
         Cy = self.dist_fn(z, xt)
-        Cx, Cy = Cx / (Cx.max() + self.div_term), Cy / (Cy.max() + self.div_term)
 
         Gx = self.alpha * Cx + (1 - self.alpha) * self._guide_matrix(xs, z, I, L)
         Gy = self.alpha * Cy + (1 - self.alpha) * self._guide_matrix(z, xt, L, J)
@@ -190,7 +191,7 @@ class KeypointFOT(_OT):
         R1 = softmax(-2 * CXs_kp / self.rho)
         R2 = softmax(-2 * CXt_kp / self.rho)
         G = self.sim_fn(R1, R2, eps=self.div_term)
-        return G / (G.max() + self.div_term)
+        return G
     
 
 class FOT(_OT):
