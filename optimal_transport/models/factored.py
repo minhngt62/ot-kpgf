@@ -60,7 +60,7 @@ class KeypointFOT(_OT):
             err = np.sqrt(np.sum(np.square(z - self.z_), axis=1)).sum()
             self.z_ = z
             if err <= self.stop_thr:
-                print(f"Threshold reached at iteration {i}")
+                #print(f"Threshold reached at iteration {i}")
                 break
         
         self.Pa_ = Ps
@@ -270,7 +270,7 @@ class FOT(_OT):
         return Z
     
     
-# @deprecated: Adopt from https://github.com/nerdslab/latentOT/blob/main/python_demo/utils.py
+# @deprecated: Adopt from https://github.com/nerdslab/latentOT
 class LOT(_OT):
     def __init__(self, distance: Optional[Distance], n_source_anchors, n_target_anchors, epsilon=1, epsilon_z=1, intensity=[10, 10, 10], floyditer=50,
                  tolratio=1e-7, norm=2, random_state=None):
