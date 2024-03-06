@@ -18,7 +18,7 @@ class KeypointFOT(_OT):
         temperature: float = 0.1, 
         div_term: float = 1e-10, 
         guide_mixing: float = 0.6,
-        stop_thr: float = 1e-7, 
+        stop_thr: float = 1e-5, 
         max_iters: int = 1000
     ):
         super().__init__(distance)
@@ -57,7 +57,7 @@ class KeypointFOT(_OT):
             Pt = self._update_plans(h, b, Ct, Mt)
             z = self._update_anchors(xs, xt, Ps, Pt)
 
-            err = np.sqrt(np.sum(np.square(z - self.z_), axis=1)).sum()
+            err = np.linalg.norm(z - self.z_)
             self.z_ = z
             if err <= self.stop_thr:
                 #print(f"Threshold reached at iteration {i}")
@@ -126,7 +126,7 @@ class KeypointFOT(_OT):
         p: np.ndarray, q: np.ndarray,
         C: np.ndarray, mask: np.ndarray,
     ) -> np.ndarray:
-        C /= C.max() # normalized
+        C /= (C.max() + self.div_term) # normalized
         
         def M(u, v):
             "Modified cost for logarithmic updates"
