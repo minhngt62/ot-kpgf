@@ -195,7 +195,7 @@ class KeypointFOT(_OT):
         R1 = softmax(-2 * CXs_kp / self.rho)
         R2 = softmax(-2 * CXt_kp / self.rho)
         G = self.sim_fn(R1, R2)
-        return G / (G.max() + self.div_term)
+        return G
     
 
 class FOT(_OT):
