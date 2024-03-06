@@ -16,7 +16,7 @@ class KeypointFOT(_OT):
         n_free_anchors: Optional[int] = None,
         sinkhorn_reg: float = 0.004, 
         temperature: float = 0.1, 
-        div_term: float = 1e-10, 
+        div_term: float = 1e-20, 
         guide_mixing: float = 0.6,
         stop_thr: float = 1e-5, 
         max_iters: int = 1000
@@ -126,8 +126,6 @@ class KeypointFOT(_OT):
         p: np.ndarray, q: np.ndarray,
         C: np.ndarray, mask: np.ndarray,
     ) -> np.ndarray:
-        C /= (C.max() + self.div_term) # normalized
-        
         def M(u, v):
             "Modified cost for logarithmic updates"
             "$M_{ij} = (-c_{ij} + u_i + v_j) / \epsilon$"
@@ -143,14 +141,11 @@ class KeypointFOT(_OT):
 
         # Actual Sinkhorn loop ......................................................................
         u, v, err = 0. * p, 0. * q, 0.
-        actual_nits = 0  # to check if algorithm terminates because of threshold or max iterations reached
-
         for i in range(self.max_iters):
             u1 = u  # useful to check the update
             u = self.eps * (np.log(p) - lse(M(u, v)).squeeze()) + u
             v = self.eps * (np.log(q) - lse(M(u, v).T).squeeze()) + v
             err = np.linalg.norm(u - u1)
-            actual_nits += 1
             if err < self.stop_thr:
                 break
 
@@ -194,8 +189,8 @@ class KeypointFOT(_OT):
         CXt_kp = CXt[:, J]
         R1 = softmax(-2 * CXs_kp / self.rho)
         R2 = softmax(-2 * CXt_kp / self.rho)
-        G = self.sim_fn(R1, R2)
-        return G
+        G = self.sim_fn(R1, R2, eps=self.div_term)
+        return G / (G.max() + self.div_term)
     
 
 class FOT(_OT):
