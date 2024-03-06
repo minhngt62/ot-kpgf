@@ -29,7 +29,7 @@ class KNN:
         Returns:
         - y_pred: Predicted labels for test data.
         """
-        assert self.X_train.shape[1] == X_test, "Input data should have the same dimensions as the training data."
+        assert self.X_train.shape[1] == X_test.shape[1], "Input data should have the same dimensions as the training data."
         
         distances = np.linalg.norm(self.X_train[:, np.newaxis, :] - X_test, axis=2)
         k_neighbors_indices = np.argsort(distances, axis=0)[:self.k]
