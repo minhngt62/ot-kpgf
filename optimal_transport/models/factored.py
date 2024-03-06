@@ -162,6 +162,8 @@ class KeypointFOT(_OT):
     ) -> Tuple[np.ndarray, np.ndarray]:
         Cx = self.dist_fn(xs, z)
         Cy = self.dist_fn(z, xt)
+        Cx = Cx / (Cx.max() + self.div_term)
+        Cy = Cy / (Cy.max() + self.div_term)
 
         Gx = self.alpha * Cx + (1 - self.alpha) * self._guide_matrix(xs, z, I, L)
         Gy = self.alpha * Cy + (1 - self.alpha) * self._guide_matrix(z, xt, L, J)
@@ -184,12 +186,15 @@ class KeypointFOT(_OT):
         xs: np.ndarray, xt: np.ndarray,
         I: np.ndarray, J: np.ndarray,
     ) -> np.ndarray:
-        CXs = self.dist_fn(xs, xs)
-        CXt = self.dist_fn(xt, xt)
-        CXs_kp = CXs[:, I]
-        CXt_kp = CXt[:, J]
-        R1 = softmax(-2 * CXs_kp / self.rho)
-        R2 = softmax(-2 * CXt_kp / self.rho)
+        Cs = self.dist_fn(xs, xs)
+        Ct = self.dist_fn(xt, xt)
+        Cs = Cs / (Cs.max() + self.div_term)
+        Ct = Ct / (Ct.max() + self.div_term)
+
+        Cs_kp = Cs[:, I]
+        Ct_kp = Ct[:, J]
+        R1 = softmax(-2 * Cs_kp / self.rho)
+        R2 = softmax(-2 * Ct_kp / self.rho)
         G = self.sim_fn(R1, R2, eps=self.div_term)
         return G
     
