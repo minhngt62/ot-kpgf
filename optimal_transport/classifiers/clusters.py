@@ -33,7 +33,7 @@ class KNN:
         
         distances = np.linalg.norm(self.X_train[:, np.newaxis, :] - X_test, axis=2)
         k_neighbors_indices = np.argsort(distances, axis=0)[:self.k]
-        k_neighbors_labels = self.y_train[k_neighbors_indices]
+        k_neighbors_labels = self.y_train[k_neighbors_indices].astype("int64")
         counts = np.apply_along_axis(lambda x: np.bincount(x, minlength=np.max(self.y_train)+1), axis=0, arr=k_neighbors_labels)
         y_pred = np.argmax(counts, axis=0)
 
