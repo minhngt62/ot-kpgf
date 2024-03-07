@@ -11,9 +11,9 @@ import time
 class Robustness(Experiment):
     def __init__(
         self,
+        model: Dict[int, _OT],
         exp_name: str,
         log_dir: str,
-        model: Dict[int, _OT]
     ):
         super().__init__(exp_name, log_dir, model)
     
