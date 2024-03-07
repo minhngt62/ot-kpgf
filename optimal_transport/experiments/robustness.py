@@ -115,7 +115,7 @@ class Robustness(Experiment):
             for model_id, model in self.model.items():
                 acc = self.run(Xs, Xt, ys, yt, model, K=K)
                 self.record_["dimensionality"][model_id]["dimension"].append(prj_dim)
-                self.record_["dimensionality"][model_id]["dimension"].append(acc)
+                self.record_["dimensionality"][model_id]["accuracy"].append(acc)
             
             if (prj_dim - hyperplane_dim) % (2 * freq_projected_dim) == 0:
                 info = {model_id: self.record_["dimensionality"][model_id]["accuracy"][-1] for model_id in self.record_["dimensionality"]}
