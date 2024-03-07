@@ -17,7 +17,6 @@ class Robustness(Experiment):
     ):
         super().__init__(model, exp_name, log_dir)
     
-
     def run(
         self, xs: np.ndarray, xt: np.ndarray, ys: np.ndarray, yt: np.ndarray, 
         model: _OT, **kwargs
@@ -86,31 +85,40 @@ class Robustness(Experiment):
         X = np.concatenate([X, noise], axis=1) # n x (d + d_noise)
         return X
 
-    def dimensionality(
+
+class Dimensionality(Robustness):
+    def __init__(
+        self,
+        model: Dict[int, _OT],
+        exp_name: str,
+        log_dir: str,
+    ):
+        super().__init__(model, exp_name, log_dir)
+
+    def __call__(
         self,
         hyperplane_dim: int = 5,
         max_projected_dim: int = 100,
         freq_projected_dim: int = 5,
-        samples_per_component: float = 100,
-        n_components: int = 4,
+        n_components: int = 3,
+        cluster_samples_per_dim: int = 5,
         n_keypoints: Optional[int] = 3,
-        source_keypoints: Optional[np.ndarray] = None,
-        target_keypoints: Optional[np.ndarray] = None,
-        dim_noise_level: float = 0.1,
+        source_means: Optional[np.ndarray] = None,
+        target_means: Optional[np.ndarray] = None,
+        dim_noise_level: float = 1,
     ) -> Dict:
         self.record_["dimensionality"] = {model_id: {"dimension": [], "accuracy": []} for model_id in self.model}
         assert hyperplane_dim+freq_projected_dim < max_projected_dim, "Number of noise dimensions should be larger than that of original dimensions."
-        
-        sample_size = n_components * samples_per_component
-        Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, means=source_keypoints)
-        Xt, yt, Kt = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, means=target_keypoints)
-        K = [(Ks[i], Kt[i]) for i in range(len(Ks))][:n_keypoints]
 
         for prj_dim in range(hyperplane_dim, max_projected_dim+1, freq_projected_dim):
             start = time.time()
-            if prj_dim > hyperplane_dim:
-                Xs = Robustness.add_noise_dims(Xs, freq_projected_dim, dim_noise_level)
-                Xt = Robustness.add_noise_dims(Xt, freq_projected_dim, dim_noise_level)
+            
+            sample_size = n_components * (cluster_samples_per_dim * prj_dim)
+            Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, 
+                                                                       means=source_means, dim_noise_level=dim_noise_level)
+            Xt, yt, Kt = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, 
+                                                                       means=target_means, dim_noise_level=dim_noise_level)
+            K = [(Ks[i], Kt[i]) for i in range(len(Ks))][:n_keypoints]
 
             for model_id, model in self.model.items():
                 acc = self.run(Xs, Xt, ys, yt, model, K=K)
