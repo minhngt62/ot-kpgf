@@ -113,7 +113,7 @@ class Robustness(Experiment):
                 Xt = Robustness.add_noise_dims(Xt, freq_projected_dim, dim_noise_level)
 
             for model_id, model in self.model.items():
-                acc = self.run(Xs, Xt, ys, yt, model, K)
+                acc = self.run(Xs, Xt, ys, yt, model, K=K)
                 self.record_["dimensionality"][model_id]["dimension"].append(prj_dim)
                 self.record_["dimensionality"][model_id]["dimension"].append(acc)
             
