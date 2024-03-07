@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Optional, Union
 
+
 class Distance(type):
     def __new__(
         cls,
