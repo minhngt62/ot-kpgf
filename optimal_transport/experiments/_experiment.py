@@ -18,6 +18,8 @@ class Experiment:
     ):
         # set up loggers .........................
         self.log_dir = os.path.join(log_dir, exp_name)
+        os.makedirs(self.log_dir, exist_ok=True)
+
         self.cur_time = datetime.now().strftime("%y%m%d_%H%M%S")
         self.logger = logging.getLogger(__name__ + " " + self.cur_time)
         self.logger.setLevel(logging.INFO)
