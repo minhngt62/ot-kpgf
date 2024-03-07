@@ -15,7 +15,7 @@ class Robustness(Experiment):
         exp_name: str,
         log_dir: str,
     ):
-        super().__init__(exp_name, log_dir, model)
+        super().__init__(model, exp_name, log_dir)
     
 
     def run(
