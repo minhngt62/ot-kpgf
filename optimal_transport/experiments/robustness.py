@@ -106,12 +106,10 @@ class Dimensionality(Robustness):
         target_means: Optional[np.ndarray] = None,
         dim_noise_level: float = 1,
     ) -> Dict:
-        self.record_["dimensionality"] = {model_id: {"dimension": [], "accuracy": []} for model_id in self.model}
+        self.record_["dimensionality"] = {model_id: {"dimension": [], "accuracy": [], "runtime": []} for model_id in self.model}
         assert hyperplane_dim+freq_projected_dim < max_projected_dim, "Number of noise dimensions should be larger than that of original dimensions."
 
         for prj_dim in range(hyperplane_dim, max_projected_dim+1, freq_projected_dim):
-            start = time.time()
-            
             sample_size = n_components * (cluster_samples_per_dim * prj_dim)
             Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, 
                                                                        means=source_means, dim_noise_level=dim_noise_level)
@@ -120,14 +118,17 @@ class Dimensionality(Robustness):
             K = [(Ks[i], Kt[i]) for i in range(len(Ks))][:n_keypoints]
 
             for model_id, model in self.model.items():
+                start = time.time()
                 acc = self.run(Xs, Xt, ys, yt, model, K=K)
                 self.record_["dimensionality"][model_id]["dimension"].append(prj_dim)
                 self.record_["dimensionality"][model_id]["accuracy"].append(acc)
+                self.record_["dimensionality"][model_id]["runtime"].append(time.time() - start)
             
             if (prj_dim - hyperplane_dim) % freq_projected_dim == 0:
-                info = {model_id: self.record_["dimensionality"][model_id]["accuracy"][-1] for model_id in self.record_["dimensionality"]}
+                acc_log = {model_id: self.record_["dimensionality"][model_id]["accuracy"][-1] for model_id in self.record_["dimensionality"]}
+                runtime_log = {model_id: self.record_["dimensionality"][model_id]["runtime"][-1] for model_id in self.record_["dimensionality"]}
                 self.checkpoint()
-                self.logger.info(f"Dimensions: {prj_dim}, Accuracy: {info}, Runtime: {int(time.time() - start)}s")
+                self.logger.info(f"Dimensions: {prj_dim}, Accuracy: {acc_log}, Runtime: {runtime_log}s")
 
         return self.record_["dimensionality"]
     
