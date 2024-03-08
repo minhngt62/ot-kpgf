@@ -90,10 +90,9 @@ class Dimensionality(Robustness):
     def __init__(
         self,
         model: Dict[int, _OT],
-        exp_name: str,
         log_dir: str,
     ):
-        super().__init__(model, exp_name, log_dir)
+        super().__init__(model, exp_name="dimensionality", log_dir=log_dir)
 
     def __call__(
         self,
