@@ -126,7 +126,7 @@ class Dimensionality(Robustness):
             
             if (prj_dim - hyperplane_dim) % freq_projected_dim == 0:
                 acc_log = {model_id: self.record_["dimensionality"][model_id]["accuracy"][-1] for model_id in self.record_["dimensionality"]}
-                runtime_log = {model_id: self.record_["dimensionality"][model_id]["runtime"][-1] for model_id in self.record_["dimensionality"]}
+                runtime_log = {model_id: int(self.record_["dimensionality"][model_id]["runtime"][-1]) for model_id in self.record_["dimensionality"]}
                 self.checkpoint()
                 self.logger.info(f"Dimensions: {prj_dim}, Accuracy: {acc_log}, Runtime: {runtime_log}s")
 
