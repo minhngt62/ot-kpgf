@@ -76,7 +76,7 @@ class Robustness(Experiment):
         if d_proj is not None:
             assert d_proj >= d, "The original data should be embedded in a noisy higher-dimensional space."
             if d_proj != d:
-                X = Experiment.add_noise_dims(X, d_proj - d, dim_noise_level=dim_noise_level)
+                X = Robustness.add_noise_dims(X, d_proj - d, dim_noise_level=dim_noise_level)
         return X, y, K # <-- K ~ centroid indices
     
     @classmethod
