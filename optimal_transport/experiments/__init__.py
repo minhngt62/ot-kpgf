@@ -1,1 +1,1 @@
-from .robustness import Robustness
+from .robustness import Dimensionality

@@ -17,7 +17,6 @@ class Robustness(Experiment):
     ):
         super().__init__(model, exp_name, log_dir)
     
-
     def run(
         self, xs: np.ndarray, xt: np.ndarray, ys: np.ndarray, yt: np.ndarray, 
         model: _OT, **kwargs
@@ -47,10 +46,13 @@ class Robustness(Experiment):
         means: Optional[np.ndarray] = None,
         covs: Optional[Union[np.ndarray, List]] = None,
         org_noise_level: float = 0,
-        dim_noise_level: float = 0.1,
+        dim_noise_level: float = 0,
     ) -> Tuple[np.ndarray, np.ndarray, List]:
         assert n % k == 0, "Each clusters should have equal number of samples."
+        if d_proj is None:
+            d_proj = d
 
+        # Original data ................................
         # generate random means for each cluster
         if means is None:
             means = np.random.randn(k, d)
@@ -64,63 +66,130 @@ class Robustness(Experiment):
 
         # generate data points for each cluster
         X, y, K = [], [], []
-        gauss_noise = np.random.randn(k, d)
         for i in range(k):
             Xi = np.random.multivariate_normal(means[i], covs[i], size=(n // k - 1))
-            Xi = np.concatenate((means[i][None, :], Xi)) + org_noise_level * np.repeat(gauss_noise[i].reshape(1, -1), n//k, axis=0)
+            Xi = np.concatenate((means[i][None, :], Xi))
             X.append(Xi) # (n, d)
             y.append(i * np.ones(n // k))
             K.append(i * (n // k))
         X, y = np.concatenate(X), np.concatenate(y)
 
-        # randomly project data points to a 5-dimensional subspace
-        if d_proj is not None:
-            assert d_proj >= d, "The original data should be embedded in a noisy higher-dimensional space."
-            if d_proj != d:
-                X = Experiment.add_noise_dims(X, d_proj - d, dim_noise_level=dim_noise_level)
+        # Pertubations ................................
+        # add gaussian noise to each component
+        if org_noise_level > 0:
+            X = Robustness.add_noise_plane(X, y, means, noise_level=org_noise_level)
+
+        # noisely project data points to a higher-dimensional subspace
+        if d_proj > d:
+            X = Robustness.add_noise_dim(X, d_proj-d, noise_level=dim_noise_level)
+        
         return X, y, K # <-- K ~ centroid indices
     
     @classmethod
-    def add_noise_dims(cls, X, n_dims, dim_noise_level=0.1):
-        noise = np.random.normal(scale=dim_noise_level, size=(X.shape[0], n_dims))
+    def add_noise_dim(cls, X: np.ndarray, n_dims: int, 
+            noise_level: float = 1) -> np.ndarray:
+        if n_dims == 0:
+            return X
+        noise = np.random.normal(scale=noise_level, size=(X.shape[0], n_dims))
         X = np.concatenate([X, noise], axis=1) # n x (d + d_noise)
         return X
+    
+    @classmethod
+    def add_noise_plane(cls, X: np.ndarray, y:np.ndarray, means: np.ndarray, 
+            noise_level: float = 1) -> np.ndarray:
+        if noise_level == 0:
+            return X
+        inds = np.random.shuffle(np.arange(X.shape[0]))[:int(noise_level * X.shape[0])]
+        X[inds] = X[inds] + np.random.normal(
+            scale=np.sqrt(0.5 * np.square(means[y[inds].astype("int64")]), 
+            size=(len(inds), X.shape[1]))
+        )
+        return X
 
-    def dimensionality(
+
+class Dimensionality(Robustness):
+    def __init__(
+        self,
+        model: Dict[int, _OT],
+        log_dir: str,
+    ):
+        super().__init__(model, exp_name="dimensionality", log_dir=log_dir)
+
+    def __call__(
         self,
         hyperplane_dim: int = 5,
         max_projected_dim: int = 100,
         freq_projected_dim: int = 5,
-        samples_per_component: float = 100,
         n_components: int = 4,
-        n_keypoints: Optional[int] = 3,
-        source_keypoints: Optional[np.ndarray] = None,
-        target_keypoints: Optional[np.ndarray] = None,
-        dim_noise_level: float = 0.1,
+        cluster_samples: int = 100,
+        n_keypoints: Optional[int] = 4,
+        source_means: Optional[np.ndarray] = None,
+        target_means: Optional[np.ndarray] = None,
+        noise_level: float = 1,
     ) -> Dict:
-        self.record_["dimensionality"] = {model_id: {"dimension": [], "accuracy": []} for model_id in self.model}
-        assert hyperplane_dim+freq_projected_dim < max_projected_dim, "Number of noise dimensions should be larger than that of original dimensions."
+        self.record_["dimensionality"] = {model_id: {"dimension": [], "accuracy": [], "runtime": []} for model_id in self.model}
+        assert (max_projected_dim - hyperplane_dim) % freq_projected_dim == 0
         
-        sample_size = n_components * samples_per_component
-        Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, means=source_keypoints)
-        Xt, yt, Kt = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, means=target_keypoints)
+        sample_size = n_components * cluster_samples
+        Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, means=source_means)
+        Xt, yt, Kt = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, means=target_means)
         K = [(Ks[i], Kt[i]) for i in range(len(Ks))][:n_keypoints]
 
         for prj_dim in range(hyperplane_dim, max_projected_dim+1, freq_projected_dim):
-            start = time.time()
-            if prj_dim > hyperplane_dim:
-                Xs = Robustness.add_noise_dims(Xs, freq_projected_dim, dim_noise_level)
-                Xt = Robustness.add_noise_dims(Xt, freq_projected_dim, dim_noise_level)
+            Xs = Robustness.add_noise_dim(Xs, prj_dim-hyperplane_dim, noise_level=noise_level)
+            Xt = Robustness.add_noise_dim(Xt, prj_dim-hyperplane_dim, noise_level=noise_level)
 
             for model_id, model in self.model.items():
+                start = time.time()
                 acc = self.run(Xs, Xt, ys, yt, model, K=K)
                 self.record_["dimensionality"][model_id]["dimension"].append(prj_dim)
                 self.record_["dimensionality"][model_id]["accuracy"].append(acc)
+                self.record_["dimensionality"][model_id]["runtime"].append(time.time() - start)
             
-            if (prj_dim - hyperplane_dim) % (2 * freq_projected_dim) == 0:
-                info = {model_id: self.record_["dimensionality"][model_id]["accuracy"][-1] for model_id in self.record_["dimensionality"]}
+            if (prj_dim - hyperplane_dim) % freq_projected_dim == 0:
+                acc_log = {model_id: self.record_["dimensionality"][model_id]["accuracy"][-1] for model_id in self.record_["dimensionality"]}
+                runtime_log = {model_id: self.record_["dimensionality"][model_id]["runtime"][-1] for model_id in self.record_["dimensionality"]}
                 self.checkpoint()
-                self.logger.info(f"Dimensions: {prj_dim}, Accuracy: {info}, Runtime: {time.time() - start}s")
+                self.logger.info(f"Dimensions: {prj_dim}, Accuracy: {acc_log}, Runtime: {runtime_log}")
 
         return self.record_["dimensionality"]
     
+
+class OutlierRate(Robustness):
+    def __call__(
+        self,
+        max_noise_ratio: float = 1,
+        freq_noise_ratio: float = 0.1,
+        hyperplane_dim: int = 30,
+        cluster_samples: int = 100,
+        n_keypoints: Optional[int] = 4,
+        n_components: int = 4,
+        source_means: Optional[np.ndarray] = None,
+        target_means: Optional[np.ndarray] = None,
+    ):
+        self.record_["outlier"] = {model_id: {"ratio": [], "accuracy": [], "runtime": []} for model_id in self.model}
+        assert max_noise_ratio % freq_noise_ratio == 0
+
+        sample_size = n_components * cluster_samples
+        Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, means=source_means)
+        Xt, yt, Kt = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, means=target_means)
+        K = [(Ks[i], Kt[i]) for i in range(len(Ks))][:n_keypoints]
+
+        for noise_ratio in range(0, max_noise_ratio + freq_noise_ratio, freq_noise_ratio):
+            Xs = Robustness.add_noise_plane(Xs, ys, Ks, noise_level=noise_ratio)
+            Xt = Robustness.add_noise_plane(Xt, yt, Kt, noise_level=noise_ratio)
+
+            for model_id, model in self.model.items():
+                start = time.time()
+                acc = self.run(Xs, Xt, ys, yt, model, K=K)
+                self.record_["outlier"][model_id]["ratio"].append(noise_ratio)
+                self.record_["outlier"][model_id]["accuracy"].append(acc)
+                self.record_["outlier"][model_id]["runtime"].append(time.time() - start)
+            
+            if max_noise_ratio % freq_noise_ratio == 0:
+                acc_log = {model_id: self.record_["outlier"][model_id]["accuracy"][-1] for model_id in self.record_["dimensionality"]}
+                runtime_log = {model_id: self.record_["outlier"][model_id]["runtime"][-1] for model_id in self.record_["dimensionality"]}
+                self.checkpoint()
+                self.logger.info(f"Noise ratio: {noise_ratio}, Accuracy: {acc_log}, Runtime: {runtime_log}")
+
+        return self.record_["outlier"]
