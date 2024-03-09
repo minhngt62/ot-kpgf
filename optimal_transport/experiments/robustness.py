@@ -99,10 +99,12 @@ class Robustness(Experiment):
             noise_level: float = 1) -> np.ndarray:
         if noise_level == 0:
             return X
-        inds = np.random.shuffle(np.arange(X.shape[0]))[:int(noise_level * X.shape[0])]
+        inds = np.arange(X.shape[0])
+        np.random.shuffle(inds)
+        inds = inds[:int(noise_level * X.shape[0])]
         X[inds] = X[inds] + np.random.normal(
-            scale=np.sqrt(0.5 * np.square(means[y[inds].astype("int64")]), 
-            size=(len(inds), X.shape[1]))
+            scale=np.sqrt(0.5 * np.square(means[y[inds].astype("int64")])), 
+            size=(len(inds), X.shape[1])
         )
         return X
 
@@ -146,16 +148,22 @@ class Dimensionality(Robustness):
                 self.record_["dimensionality"][model_id]["accuracy"].append(acc)
                 self.record_["dimensionality"][model_id]["runtime"].append(time.time() - start)
             
-            if (prj_dim - hyperplane_dim) % freq_projected_dim == 0:
-                acc_log = {model_id: self.record_["dimensionality"][model_id]["accuracy"][-1] for model_id in self.record_["dimensionality"]}
-                runtime_log = {model_id: self.record_["dimensionality"][model_id]["runtime"][-1] for model_id in self.record_["dimensionality"]}
-                self.checkpoint()
-                self.logger.info(f"Dimensions: {prj_dim}, Accuracy: {acc_log}, Runtime: {runtime_log}")
+            acc_log = {model_id: self.record_["dimensionality"][model_id]["accuracy"][-1] for model_id in self.record_["dimensionality"]}
+            runtime_log = {model_id: self.record_["dimensionality"][model_id]["runtime"][-1] for model_id in self.record_["dimensionality"]}
+            self.checkpoint()
+            self.logger.info(f"Dimensions: {prj_dim}, Accuracy: {acc_log}, Runtime: {runtime_log}")
 
         return self.record_["dimensionality"]
     
 
 class OutlierRate(Robustness):
+    def __init__(
+        self,
+        model: Dict[int, _OT],
+        log_dir: str,
+    ):
+        super().__init__(model, exp_name="outlier", log_dir=log_dir)
+
     def __call__(
         self,
         max_noise_ratio: float = 1,
@@ -168,16 +176,15 @@ class OutlierRate(Robustness):
         target_means: Optional[np.ndarray] = None,
     ):
         self.record_["outlier"] = {model_id: {"ratio": [], "accuracy": [], "runtime": []} for model_id in self.model}
-        assert max_noise_ratio % freq_noise_ratio == 0
 
         sample_size = n_components * cluster_samples
         Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, means=source_means)
         Xt, yt, Kt = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, means=target_means)
         K = [(Ks[i], Kt[i]) for i in range(len(Ks))][:n_keypoints]
 
-        for noise_ratio in range(0, max_noise_ratio + freq_noise_ratio, freq_noise_ratio):
-            Xs = Robustness.add_noise_plane(Xs, ys, Ks, noise_level=noise_ratio)
-            Xt = Robustness.add_noise_plane(Xt, yt, Kt, noise_level=noise_ratio)
+        for noise_ratio in [freq_noise_ratio * i for i in range(int(max_noise_ratio // freq_noise_ratio) + 1)]:
+            Xs = Robustness.add_noise_plane(Xs, ys, Xs[Ks][np.argsort(ys[Ks])], noise_level=noise_ratio)
+            Xt = Robustness.add_noise_plane(Xt, yt, Xt[Kt][np.argsort(ys[Ks])], noise_level=noise_ratio)
 
             for model_id, model in self.model.items():
                 start = time.time()
@@ -185,11 +192,10 @@ class OutlierRate(Robustness):
                 self.record_["outlier"][model_id]["ratio"].append(noise_ratio)
                 self.record_["outlier"][model_id]["accuracy"].append(acc)
                 self.record_["outlier"][model_id]["runtime"].append(time.time() - start)
-            
-            if max_noise_ratio % freq_noise_ratio == 0:
-                acc_log = {model_id: self.record_["outlier"][model_id]["accuracy"][-1] for model_id in self.record_["dimensionality"]}
-                runtime_log = {model_id: self.record_["outlier"][model_id]["runtime"][-1] for model_id in self.record_["dimensionality"]}
-                self.checkpoint()
-                self.logger.info(f"Noise ratio: {noise_ratio}, Accuracy: {acc_log}, Runtime: {runtime_log}")
+
+            acc_log = {model_id: self.record_["outlier"][model_id]["accuracy"][-1] for model_id in self.record_["outlier"]}
+            runtime_log = {model_id: self.record_["outlier"][model_id]["runtime"][-1] for model_id in self.record_["outlier"]}
+            self.checkpoint()
+            self.logger.info(f"Noise ratio: {noise_ratio}, Accuracy: {acc_log}, Runtime: {runtime_log}")
 
         return self.record_["outlier"]

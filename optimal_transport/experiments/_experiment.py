@@ -21,7 +21,7 @@ class Experiment:
         os.makedirs(self.log_dir, exist_ok=True)
 
         self.cur_time = datetime.now().strftime("%y%m%d_%H%M%S")
-        self.logger = logging.getLogger(__name__ + " " + self.cur_time)
+        self.logger = logging.getLogger(f"experiment/{exp_name.upper()}")
         self.logger.setLevel(logging.INFO)
         
         s_handler = logging.StreamHandler(stream=sys.stdout)

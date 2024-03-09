@@ -1,1 +1,1 @@
-from .robustness import Dimensionality
+from .robustness import Dimensionality, OutlierRate
