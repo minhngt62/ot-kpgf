@@ -111,9 +111,9 @@ class Dimensionality(Robustness):
 
         for prj_dim in range(hyperplane_dim, max_projected_dim+1, freq_projected_dim):
             sample_size = n_components * (cluster_samples_per_dim * prj_dim)
-            Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, 
+            Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=prj_dim, 
                                                                        means=source_means, dim_noise_level=dim_noise_level)
-            Xt, yt, Kt = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, 
+            Xt, yt, Kt = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=prj_dim, 
                                                                        means=target_means, dim_noise_level=dim_noise_level)
             K = [(Ks[i], Kt[i]) for i in range(len(Ks))][:n_keypoints]
 
