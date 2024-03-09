@@ -119,15 +119,15 @@ class Dimensionality(Robustness):
 
     def __call__(
         self,
-        hyperplane_dim: int = 5,
+        noise_level: float = 1,
         max_projected_dim: int = 100,
         freq_projected_dim: int = 5,
+        hyperplane_dim: int = 5,
         n_components: int = 4,
         cluster_samples: int = 100,
         n_keypoints: Optional[int] = 4,
         source_means: Optional[np.ndarray] = None,
         target_means: Optional[np.ndarray] = None,
-        noise_level: float = 1,
     ) -> Dict:
         self.record_["dimensionality"] = {model_id: {"dimension": [], "accuracy": [], "runtime": []} for model_id in self.model}
         assert (max_projected_dim - hyperplane_dim) % freq_projected_dim == 0
@@ -162,7 +162,7 @@ class OutlierRate(Robustness):
         model: Dict[int, _OT],
         log_dir: str,
     ):
-        super().__init__(model, exp_name="outlier", log_dir=log_dir)
+        super().__init__(model, exp_name="outlier_rate", log_dir=log_dir)
 
     def __call__(
         self,
@@ -174,8 +174,8 @@ class OutlierRate(Robustness):
         n_components: int = 4,
         source_means: Optional[np.ndarray] = None,
         target_means: Optional[np.ndarray] = None,
-    ):
-        self.record_["outlier"] = {model_id: {"ratio": [], "accuracy": [], "runtime": []} for model_id in self.model}
+    ) -> Dict:
+        self.record_["outlier_rate"] = {model_id: {"ratio": [], "accuracy": [], "runtime": []} for model_id in self.model}
 
         sample_size = n_components * cluster_samples
         Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, means=source_means)
@@ -183,19 +183,59 @@ class OutlierRate(Robustness):
         K = [(Ks[i], Kt[i]) for i in range(len(Ks))][:n_keypoints]
 
         for noise_ratio in [freq_noise_ratio * i for i in range(int(max_noise_ratio // freq_noise_ratio) + 1)]:
-            Xs = Robustness.add_noise_plane(Xs, ys, Xs[Ks][np.argsort(ys[Ks])], noise_level=noise_ratio)
-            Xt = Robustness.add_noise_plane(Xt, yt, Xt[Kt][np.argsort(ys[Ks])], noise_level=noise_ratio)
+            Xs_ = Robustness.add_noise_plane(Xs, ys, Xs[Ks][np.argsort(ys[Ks])], noise_level=noise_ratio)
+            Xt_ = Robustness.add_noise_plane(Xt, yt, Xt[Kt][np.argsort(ys[Ks])], noise_level=noise_ratio)
+
+            for model_id, model in self.model.items():
+                start = time.time()
+                acc = self.run(Xs_, Xt_, ys, yt, model, K=K)
+                self.record_["outlier_rate"][model_id]["ratio"].append(noise_ratio)
+                self.record_["outlier_rate"][model_id]["accuracy"].append(acc)
+                self.record_["outlier_rate"][model_id]["runtime"].append(time.time() - start)
+
+            acc_log = {model_id: self.record_["outlier_rate"][model_id]["accuracy"][-1] for model_id in self.record_["outlier_rate"]}
+            runtime_log = {model_id: self.record_["outlier_rate"][model_id]["runtime"][-1] for model_id in self.record_["outlier_rate"]}
+            self.checkpoint()
+            self.logger.info(f"Noise ratio: {noise_ratio}, Accuracy: {acc_log}, Runtime: {runtime_log}")
+
+        return self.record_["outlier_rate"]
+    
+
+class ClusterMismatch(Robustness):
+    def __init__(
+        self,
+        model: Dict[int, _OT],
+        log_dir: str,
+    ):
+        super().__init__(model, exp_name="cluster_mismatch", log_dir=log_dir)
+
+    def __call__(
+        self,
+        min_source_components: int = 2,
+        freq_components: int = 1,
+        target_components: int = 10,
+        hyperplane_dim: int = 30,
+        cluster_samples: int = 100,
+        n_keypoints: Optional[int] = 4,
+        source_means: Optional[np.ndarray] = None,
+        target_means: Optional[np.ndarray] = None,
+    ) -> Dict:
+        self.record_["cluster_mismatch"] = {model_id: {"cluster": [], "accuracy": [], "runtime": []} for model_id in self.model}
+        assert (target_components - min_source_components) % freq_components == 0
+
+        for n_components in range(min_source_components, target_components+1, freq_components):
+            Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(n_components * cluster_samples, hyperplane_dim, n_components, d_proj=hyperplane_dim, means=source_means)
+            Xt, yt, Kt = Robustness.gaussMixture_meanRandom_covWishart(target_components * cluster_samples, hyperplane_dim, n_components, d_proj=hyperplane_dim, means=target_means)
+            K = [(Ks[i], Kt[i]) for i in range(len(Ks))][:n_keypoints]
 
             for model_id, model in self.model.items():
                 start = time.time()
                 acc = self.run(Xs, Xt, ys, yt, model, K=K)
-                self.record_["outlier"][model_id]["ratio"].append(noise_ratio)
-                self.record_["outlier"][model_id]["accuracy"].append(acc)
-                self.record_["outlier"][model_id]["runtime"].append(time.time() - start)
+                self.record_["cluster_mismatch"][model_id]["cluster"].append(n_components)
+                self.record_["cluster_mismatch"][model_id]["accuracy"].append(acc)
+                self.record_["cluster_mismatch"][model_id]["runtime"].append(time.time() - start)
 
-            acc_log = {model_id: self.record_["outlier"][model_id]["accuracy"][-1] for model_id in self.record_["outlier"]}
-            runtime_log = {model_id: self.record_["outlier"][model_id]["runtime"][-1] for model_id in self.record_["outlier"]}
+            acc_log = {model_id: self.record_["cluster_mismatch"][model_id]["accuracy"][-1] for model_id in self.record_["cluster_mismatch"]}
+            runtime_log = {model_id: self.record_["cluster_mismatch"][model_id]["runtime"][-1] for model_id in self.record_["cluster_mismatch"]}
             self.checkpoint()
-            self.logger.info(f"Noise ratio: {noise_ratio}, Accuracy: {acc_log}, Runtime: {runtime_log}")
-
-        return self.record_["outlier"]
+            self.logger.info(f"Source clusters: {n_components}, Accuracy: {acc_log}, Runtime: {runtime_log}")
