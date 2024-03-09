@@ -225,7 +225,7 @@ class ClusterMismatch(Robustness):
 
         for n_components in range(min_source_components, target_components+1, freq_components):
             Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(n_components * cluster_samples, hyperplane_dim, n_components, d_proj=hyperplane_dim, means=source_means)
-            Xt, yt, Kt = Robustness.gaussMixture_meanRandom_covWishart(target_components * cluster_samples, hyperplane_dim, n_components, d_proj=hyperplane_dim, means=target_means)
+            Xt, yt, Kt = Robustness.gaussMixture_meanRandom_covWishart(target_components * cluster_samples, hyperplane_dim, target_components, d_proj=hyperplane_dim, means=target_means)
             K = [(Ks[i], Kt[i]) for i in range(len(Ks))][:n_keypoints]
 
             for model_id, model in self.model.items():
