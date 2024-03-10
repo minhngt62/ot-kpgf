@@ -239,3 +239,5 @@ class ClusterMismatch(Robustness):
             runtime_log = {model_id: self.record_["cluster_mismatch"][model_id]["runtime"][-1] for model_id in self.record_["cluster_mismatch"]}
             self.checkpoint()
             self.logger.info(f"Source clusters: {n_components}, Accuracy: {acc_log}, Runtime: {runtime_log}")
+
+        return self.record_["cluster_mismatch"]
