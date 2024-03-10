@@ -216,21 +216,25 @@ class ClusterMismatch(Robustness):
         target_components: int = 10,
         hyperplane_dim: int = 30,
         cluster_samples: int = 100,
-        n_keypoints: Optional[int] = 4,
+        n_keypoints: Optional[int] = 10,
         source_means: Optional[np.ndarray] = None,
         target_means: Optional[np.ndarray] = None,
     ) -> Dict:
         self.record_["cluster_mismatch"] = {model_id: {"cluster": [], "accuracy": [], "runtime": []} for model_id in self.model}
         assert (target_components - min_source_components) % freq_components == 0
 
+        Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(target_components * cluster_samples, hyperplane_dim, target_components, d_proj=hyperplane_dim, means=source_means)
+        Xt, yt, Kt = Robustness.gaussMixture_meanRandom_covWishart(target_components * cluster_samples, hyperplane_dim, target_components, d_proj=hyperplane_dim, means=target_means)
+        K = [(Ks[i], Kt[i]) for i in range(len(Ks))][:n_keypoints]
+
         for n_components in range(min_source_components, target_components+1, freq_components):
-            Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(n_components * cluster_samples, hyperplane_dim, n_components, d_proj=hyperplane_dim, means=source_means)
-            Xt, yt, Kt = Robustness.gaussMixture_meanRandom_covWishart(target_components * cluster_samples, hyperplane_dim, target_components, d_proj=hyperplane_dim, means=target_means)
-            K = [(Ks[i], Kt[i]) for i in range(len(Ks))][:n_keypoints]
+            mask = np.in1d(ys, [i for i in range(n_components)])
+            Xs_, ys_ = Xs[mask], ys[mask]
+            K_ = K[:n_components]
 
             for model_id, model in self.model.items():
                 start = time.time()
-                acc = self.run(Xs, Xt, ys, yt, model, K=K)
+                acc = self.run(Xs_, Xt, ys_, yt, model, K=K_)
                 self.record_["cluster_mismatch"][model_id]["cluster"].append(n_components)
                 self.record_["cluster_mismatch"][model_id]["accuracy"].append(acc)
                 self.record_["cluster_mismatch"][model_id]["runtime"].append(time.time() - start)
@@ -238,6 +242,6 @@ class ClusterMismatch(Robustness):
             acc_log = {model_id: self.record_["cluster_mismatch"][model_id]["accuracy"][-1] for model_id in self.record_["cluster_mismatch"]}
             runtime_log = {model_id: self.record_["cluster_mismatch"][model_id]["runtime"][-1] for model_id in self.record_["cluster_mismatch"]}
             self.checkpoint()
-            self.logger.info(f"Source clusters: {n_components}, Accuracy: {acc_log}, Runtime: {runtime_log}")
+            self.logger.info(f"Number of source components: {n_components}, Accuracy: {acc_log}, Runtime: {runtime_log}")
 
         return self.record_["cluster_mismatch"]

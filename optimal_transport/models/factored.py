@@ -19,7 +19,7 @@ class KeypointFOT(_OT):
         div_term: float = 1e-10, 
         guide_mixing: float = 0.6,
         stop_thr: float = 1e-5, 
-        max_iters: int = 1000
+        max_iters: int = 100
     ):
         super().__init__(distance)
         self.sim_fn = similarity
