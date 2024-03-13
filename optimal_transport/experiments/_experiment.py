@@ -17,6 +17,7 @@ class Experiment:
         log_dir: str = "logs",
     ):
         # set up loggers .........................
+        self.exp_name = exp_name
         self.log_dir = os.path.join(log_dir, exp_name)
         os.makedirs(self.log_dir, exist_ok=True)
 
@@ -37,7 +38,7 @@ class Experiment:
         
         # set up OT models .........................
         self.model = model
-        self.record_ = {}
+        self.record_: Dict[str, Dict] = {}
 
 
     def run(self, **kwargs) -> Any:
@@ -47,9 +48,15 @@ class Experiment:
         pass
 
     def checkpoint(self):
-        json_f = os.path.join(self.log_dir, self.cur_time + ".json")
-        with open(json_f, 'w') as f:
+        log_path = os.path.join(self.log_dir, self.cur_time + ".json")
+        with open(log_path, 'w') as f:
             json.dump(self.record_, f)
-        self.logger.debug("Checkpoint at {json_f}")
+        self.logger.debug("Checkpoint at {log_path}")
+
+    def load(self, log_path: str) -> Dict:
+        with open(log_path, "r") as f:
+            self.record_ = json.load(f)
+        return self.record_
+
 
     
