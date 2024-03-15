@@ -298,7 +298,7 @@ class LOT(_OT):
         cost_matrix = np.sum(np.power(source.reshape([source.shape[0], 1, source.shape[1]]) -
                                   target.reshape([1, target.shape[0], target.shape[1]]),
                                   p), axis=-1)
-        return cost_matrix / (cost_matrix.max() + 1e-10)
+        return cost_matrix
 
     def fit(self, source: np.ndarray, target: np.ndarray, a=None, b=None, **kwargs) -> np.ndarray:
         # centroid initialized by K-means
