@@ -1,2 +1,2 @@
 from .distances import KLDiv, JSDiv, SquaredEuclidean, Distance
-from .functional import softmax
+from .functional import softmax, mnist_mlp
