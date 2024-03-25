@@ -41,10 +41,10 @@ class Experiment:
         self.record_: Dict[str, Dict] = {}
 
 
-    def run(self, **kwargs) -> Any:
+    def run(self, *args, **kwargs) -> Any:
         pass
 
-    def plot(self, **kwargs) -> Any:
+    def plot(self, *args, **kwargs) -> Any:
         pass
 
     def checkpoint(self):
@@ -52,7 +52,7 @@ class Experiment:
         with open(log_path, 'w') as f:
             json.dump(self.record_, f)
         self.logger.debug("Checkpoint at {log_path}")
-
+    
     def load(self, log_path: str) -> Dict:
         with open(log_path, "r") as f:
             self.record_ = json.load(f)
