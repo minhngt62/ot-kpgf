@@ -107,18 +107,23 @@ class Robustness(Experiment):
         return X, y, K # <-- K ~ centroid indices
     
     @classmethod
-    def add_noise_dim(cls, X: np.ndarray, n_dims: int, 
-            noise_level: float = 1) -> np.ndarray:
+    def add_noise_dim(
+        cls, X: np.ndarray, n_dims: int, 
+        noise_level: float = 1
+    ) -> np.ndarray:
         if n_dims == 0:
             return X
         X_ = X.copy()
-        noise = np.random.normal(scale=noise_level, size=(X.shape[0], n_dims))
+        noise = np.random.uniform(low=0, high=noise_level, size=(X.shape[0], n_dims))
+        #noise = np.random.normal(scale=noise_level, size=(X.shape[0], n_dims))
         X_ = np.concatenate([X, noise], axis=1) # n x (d + d_noise)
         return X_
     
     @classmethod
-    def add_noise_plane(cls, X: np.ndarray, y:np.ndarray, means: np.ndarray, 
-            noise_level: float = 1) -> np.ndarray:
+    def add_noise_plane(
+        cls, X: np.ndarray, y:np.ndarray, means: np.ndarray, 
+        noise_level: float = 1
+    ) -> np.ndarray:
         if noise_level == 0:
             return X
         inds = np.arange(X.shape[0])

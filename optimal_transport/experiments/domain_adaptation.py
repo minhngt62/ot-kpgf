@@ -11,6 +11,7 @@ import torch.utils.model_zoo as model_zoo
 import torch.nn as nn
 import os
 import time
+import matplotlib.pyplot as plt
 
 
 class DomainAdaptation(Experiment):
@@ -59,7 +60,19 @@ class DomainAdaptation(Experiment):
         self, x_axis: str, y_axis: str,
         save_fig: bool = True, **kwargs
     ):
-        pass
+        plt.figure(figsize=(12, 8))
+        for algo, record in self.record_[self.exp_name].items():
+            plt.plot(record[x_axis], record[y_axis], label=algo)
+        
+        plt.title(self.exp_name)
+        plt.xlabel(x_axis)
+        plt.ylabel(y_axis)
+        plt.legend()
+        plt.grid(True)
+
+        if save_fig:
+            plt.savefig(os.path.join(self.log_dir, f"{self.cur_time}.png"), dpi=300)
+        plt.show()
 
     @classmethod
     def mnist(
@@ -125,6 +138,7 @@ class DomainAdaptation(Experiment):
                 ),
                 axis=-1
             ) ** 1/2
+        
         labels = np.unique(y)
         selected_inds = []
         for label in labels:
@@ -206,7 +220,7 @@ class DUMNIST(DomainAdaptation):
             DomainAdaptation.keypoints(mnist_train_logits, self.mnist_y_train.numpy(), 
                                        keypoints_per_cls))[mnist_y_test.unique()].tolist()
         K = [(aug_keypoints[i], train_keypoints[i]) for i in range(len(aug_keypoints))][:n_keypoints]
-        
+
         for model_id in self.model:
             start = time.time()
             adapt_logit = self.run(mnist_test_logits_aug, mnist_train_logits, self.model[model_id], K=K)
@@ -258,7 +272,7 @@ class RobustSampling(DomainAdaptation):
         max_samples: int = 1000,
         freq_samples: int = 50
     ):
-        self.record_[self.exp_name] = {model_id: {"accuracy": [], "runtime": []} for model_id in self.model}
+        self.record_[self.exp_name] = {model_id: {"samples": [], "accuracy": [], "runtime": []} for model_id in self.model}
 
         mnist_train_logits = np.array(self.classifier(self.mnist_X_train).detach())
         usps_test_logits = np.array(self.classifier(self.usps_X_test).detach())
@@ -280,9 +294,13 @@ class RobustSampling(DomainAdaptation):
                 
                 self.record_[self.exp_name][model_id]["accuracy"].append(DomainAdaptation.accuracy(adapt_logits, self.usps_y_test.numpy()[inds_exp]))
                 self.record_[self.exp_name][model_id]["runtime"].append(time.time() - start)
+                self.record_[self.exp_name][model_id]["samples"].append(n_samples)
                 score = self.record_[self.exp_name][model_id]["accuracy"][i]
                 runtime = self.record_[self.exp_name][model_id]["runtime"][i]
                 self.logger.info(f"[{model_id}] Accuracy: {score}, Runtime: {runtime}")
+                
+            self.checkpoint()
             i += 1
 
+        self.plot(x_axis="samples", y_axis="accuracy")
         return self.record_[self.exp_name]
