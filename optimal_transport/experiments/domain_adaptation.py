@@ -277,22 +277,22 @@ class RobustSampling(DomainAdaptation):
         mnist_train_logits = np.array(self.classifier(self.mnist_X_train).detach())
         usps_test_logits = np.array(self.classifier(self.usps_X_test).detach())
 
-        inds = np.arange(len(usps_test_logits))
+        inds = np.arange(len(mnist_train_logits))
         np.random.shuffle(inds)
         i = 0
         for n_samples in range(min_samples, max_samples+1, freq_samples):
             self.logger.info(f"------ At {n_samples} samples ------")
             inds_exp = inds[:n_samples]
-            usps_keypoints = DomainAdaptation.keypoints(usps_test_logits[inds_exp], self.usps_y_test.numpy()[inds_exp], keypoints_per_cls)
-            mnist_keypoints_ = torch.tensor(DomainAdaptation.keypoints(mnist_train_logits, self.mnist_y_train.numpy(), keypoints_per_cls)) \
-                                            [self.usps_y_test[inds_exp].unique()].tolist()
+            mnist_keypoints_ = DomainAdaptation.keypoints(mnist_train_logits[inds_exp], self.mnist_y_train.numpy()[inds_exp], keypoints_per_cls)
+            usps_keypoints = torch.tensor(DomainAdaptation.keypoints(usps_test_logits, self.usps_y_test.numpy(), keypoints_per_cls)) \
+                                                                     [self.mnist_y_train[inds_exp].unique()].tolist()
             K = [(usps_keypoints[i], mnist_keypoints_[i]) for i in range(len(usps_keypoints))][:n_keypoints]
 
             for model_id in self.model:
                 start = time.time()
-                adapt_logits = self.run(usps_test_logits[inds_exp], mnist_train_logits, self.model[model_id], K=K)
+                adapt_logits = self.run(usps_test_logits, mnist_train_logits[inds_exp], self.model[model_id], K=K)
                 
-                self.record_[self.exp_name][model_id]["accuracy"].append(DomainAdaptation.accuracy(adapt_logits, self.usps_y_test.numpy()[inds_exp]))
+                self.record_[self.exp_name][model_id]["accuracy"].append(DomainAdaptation.accuracy(adapt_logits, self.usps_y_test.numpy()))
                 self.record_[self.exp_name][model_id]["runtime"].append(time.time() - start)
                 self.record_[self.exp_name][model_id]["samples"].append(n_samples)
                 score = self.record_[self.exp_name][model_id]["accuracy"][i]
