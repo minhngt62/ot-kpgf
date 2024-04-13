@@ -23,6 +23,9 @@ class Experiment:
 
         self.cur_time = datetime.now().strftime("%y%m%d_%H%M%S")
         self.logger = logging.getLogger(f"experiment/{exp_name.upper()}")
+        self.logger.propagate = False
+        if (self.logger.hasHandlers()):
+            self.logger.handlers.clear()
         self.logger.setLevel(logging.INFO)
         
         s_handler = logging.StreamHandler(stream=sys.stdout)
@@ -34,7 +37,6 @@ class Experiment:
                                                  datefmt="%m/%d %H:%M:%S"))
         f_handler.setLevel(logging.DEBUG)
         self.logger.addHandler(f_handler)
-        self.logger.propagate = False
         
         # set up OT models .........................
         self.model = model
