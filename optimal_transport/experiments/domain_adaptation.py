@@ -76,10 +76,9 @@ class DomainAdaptation(Experiment):
 
     @classmethod
     def mnist(
-        cls, root_dir: str = "datasets", seed: int = 5,
+        cls, root_dir: str = "datasets",
         train_size: int = 1000, test_size: int = 2000, transform=None,
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor]]:
-        torch.manual_seed(seed)
         if transform is None:
             transform = transforms.Compose([transforms.ToTensor()])
 
@@ -97,10 +96,9 @@ class DomainAdaptation(Experiment):
 
     @classmethod
     def usps(
-        cls, root_dir: str = "datasets", seed: int = 5,
+        cls, root_dir: str = "datasets",
         train_size: int = 1000, test_size: int = 2000, transform=None,
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor]]:
-        torch.manual_seed(seed)
         if transform is None:
             transform = transforms.Compose([transforms.ToTensor(), transforms.Pad(6)])
 
