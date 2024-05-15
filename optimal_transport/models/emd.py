@@ -17,6 +17,7 @@ class EMD(_OT):
         self.max_iters = max_iters
         self.div_term = div_term
 
+        self.P_ = None
     
     def fit(
         self, 

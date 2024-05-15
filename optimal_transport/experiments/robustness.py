@@ -8,6 +8,7 @@ import scipy
 import time
 import matplotlib.pyplot as plt
 import os
+from numpy import linalg as LA
 
 
 class Robustness(Experiment):
@@ -156,9 +157,9 @@ class Dimensionality(Robustness):
         n_keypoints: Optional[int] = 4,
         **kwargs
     ) -> Dict:
-        self.record_[self.exp_name] = {model_id: {"dimension": [], "accuracy": [], "runtime": []} for model_id in self.model}
+        self.record_[self.exp_name] = {model_id: {"dimension": [], "accuracy": [],  "runtime": []} for model_id in self.model}
         assert (max_projected_dim - hyperplane_dim) % freq_projected_dim == 0
-        
+
         sample_size = n_components * cluster_samples
         Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, **kwargs)
         Xt, yt, Kt = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, **kwargs)
@@ -171,6 +172,7 @@ class Dimensionality(Robustness):
             for model_id, model in self.model.items():
                 start = time.time()
                 acc = self.run(Xs_, Xt_, ys, yt, model, K=K)
+    
                 self.record_[self.exp_name][model_id]["dimension"].append(prj_dim)
                 self.record_[self.exp_name][model_id]["accuracy"].append(acc)
                 self.record_[self.exp_name][model_id]["runtime"].append(time.time() - start)
