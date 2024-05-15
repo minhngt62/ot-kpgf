@@ -1,5 +1,8 @@
 numpy
-scipy
 torch
 POT
+scipy
 scikit-learn
+matplotlib
+seaborn
+pandas
