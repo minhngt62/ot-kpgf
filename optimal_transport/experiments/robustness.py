@@ -23,10 +23,7 @@ class Robustness(Experiment):
     def run(
         self, xs: np.ndarray, xt: np.ndarray, ys: np.ndarray, yt: np.ndarray, 
         model: _OT, n_neighbors: int = 1, **kwargs
-    ) -> float:
-        def accuracy(preds, labels):
-            return np.sum(preds == labels) / labels.shape[0]
-        
+    ) -> np.ndarray:
         a = np.ones(xs.shape[0]) / xs.shape[0]
         b = np.ones(xt.shape[0]) / xt.shape[0]
         knn = KNN(n_neighbors)
@@ -34,7 +31,11 @@ class Robustness(Experiment):
         model.fit(xs, xt, a, b, **kwargs)
         xs_t = model.transport(xs, xt)
         ys_pred = knn.predict(xs_t)
-        return accuracy(ys_pred, ys)
+        return ys_pred
+
+    @classmethod
+    def accuracy(cls, preds, labels):
+        return np.sum(preds == labels) / labels.shape[0]
 
     def plot(
         self, x_axis: str, y_axis: str,
@@ -55,38 +56,41 @@ class Robustness(Experiment):
         plt.show()
 
     @classmethod
-    def gaussMixture_meanRandom_covWishart(
+    def gauss_mixture(
         cls,
-        n: int,
-        d: int,
-        k: int, # number of clusters
-        d_proj: Optional[int] = None,
-        means: Optional[np.ndarray] = None,
-        covs: Optional[Union[np.ndarray, List]] = None,
-        org_noise_level: float = 0,
-        dim_noise_level: float = 0,
-        cov_scale: float = 1,
+        n: int, d: int, k: int, # number of clusters
+        cluster_distance: int = 1,
+        cluster_sparity: int = 1,
         **kwargs
     ) -> Tuple[np.ndarray, np.ndarray, List]:
-        assert n % k == 0, "Each clusters should have equal number of samples."
-        if d_proj is None:
-            d_proj = d
+        def mean(
+            k: int, d: int, cluster_distance: int = 1,
+        ) -> np.ndarray:
+            mean = np.concatenate(
+                [
+                    np.random.uniform(cluster_distance, cluster_distance*2, size=k)[:, None],
+                    np.arange((-k // 2 + 1)*cluster_distance, (k // 2 + 1)*cluster_distance, cluster_distance)[:, None],
+                    np.random.rand(k, d-2)
+                ], 
+                axis=1
+            )
+            return mean
 
-        # Original data ................................
-        # generate random means for each cluster
-        if means is None:
-            means = np.random.randn(k, d)
-
-        # sample covariance matrices from a Wishart distribution
-        if covs is None:
+        def cov(
+            k: int, d: int, scale: int
+        ) -> np.ndarray:
             covs = []
             for _ in range(k):
                 cov = np.eye(d)
                 covs.append(cov)
-            covs = np.array(covs)
-        covs = cov_scale * covs
+            covs = np.array(covs) * scale
+            return covs
 
         # generate data points for each cluster
+        means = mean(k, d, cluster_distance)
+        covs = cov(k, d, cluster_sparity)
+        assert n % k == 0, "Each clusters should have equal number of samples."
+        
         X, y, K = [], [], []
         for i in range(k):
             Xi = np.random.multivariate_normal(means[i], covs[i], size=(n // k - 1))
@@ -95,18 +99,18 @@ class Robustness(Experiment):
             y.append(i * np.ones(n // k))
             K.append(i * (n // k))
         X, y = np.concatenate(X), np.concatenate(y)
-
-        # Pertubations ................................
-        # add gaussian noise to each component
-        if org_noise_level > 0:
-            X = Robustness.add_noise_plane(X, y, means, noise_level=org_noise_level)
-
-        # noisely project data points to a higher-dimensional subspace
-        if d_proj > d:
-            X = Robustness.add_noise_dim(X, d_proj-d, noise_level=dim_noise_level)
         
         return X, y, K # <-- K ~ centroid indices
-    
+
+
+class Dimensionality(Robustness):
+    def __init__(
+        self,
+        model: Dict[int, _OT],
+        log_dir: str,
+    ):
+        super().__init__(model, exp_name="dimensionality", log_dir=log_dir)
+
     @classmethod
     def add_noise_dim(
         cls, X: np.ndarray, n_dims: int, 
@@ -119,68 +123,59 @@ class Robustness(Experiment):
         #noise = np.random.normal(scale=noise_level, size=(X.shape[0], n_dims))
         X_ = np.concatenate([X, noise], axis=1) # n x (d + d_noise)
         return X_
-    
-    @classmethod
-    def add_noise_plane(
-        cls, X: np.ndarray, y:np.ndarray, means: np.ndarray, 
-        noise_level: float = 1
-    ) -> np.ndarray:
-        if noise_level == 0:
-            return X
-        inds = np.arange(X.shape[0])
-        np.random.shuffle(inds)
-        inds = inds[:int(noise_level * X.shape[0])]
-        X_ = X.copy()
-        X_[inds] = X[inds] + np.random.normal(
-            scale=np.sqrt(0.5 * np.square(means[y[inds].astype("int64")])), 
-            size=(len(inds), X.shape[1])
-        )
-        return X_
-
-
-class Dimensionality(Robustness):
-    def __init__(
-        self,
-        model: Dict[int, _OT],
-        log_dir: str,
-    ):
-        super().__init__(model, exp_name="dimensionality", log_dir=log_dir)
 
     def __call__(
         self,
-        noise_level: float = 1,
         max_projected_dim: int = 100,
-        freq_projected_dim: int = 5,
-        hyperplane_dim: int = 5,
+        freq_projected_dim: int = 10,
+        hyperplane_dim: int = 10,
         n_components: int = 4,
-        cluster_samples: int = 100,
+        cluster_samples: int = 20,
         n_keypoints: Optional[int] = 4,
+        src_properties: Dict = {"cluster_distance": 1, "cluster_sparity": 0.1},
+        target_properties: Dict = {"cluster_distance": 2, "cluster_sparity": 0.2},
+        is_checkpoint: bool = True,
         **kwargs
     ) -> Dict:
-        self.record_[self.exp_name] = {model_id: {"dimension": [], "accuracy": [],  "runtime": []} for model_id in self.model}
+        self.record_[self.exp_name] = {model_id: {"dimension": [], "accuracy": [], "deviation": [], "runtime": []} for model_id in self.model}
         assert (max_projected_dim - hyperplane_dim) % freq_projected_dim == 0
 
         sample_size = n_components * cluster_samples
-        Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, **kwargs)
-        Xt, yt, Kt = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, **kwargs)
-        K = [(Ks[i], Kt[i]) for i in range(len(Ks))][:n_keypoints]
+        P0 = {k: None for k in self.model.keys()}
 
         for prj_dim in range(hyperplane_dim, max_projected_dim+1, freq_projected_dim):
-            Xs_ = Robustness.add_noise_dim(Xs, prj_dim-hyperplane_dim, noise_level=noise_level)
-            Xt_ = Robustness.add_noise_dim(Xt, prj_dim-hyperplane_dim, noise_level=noise_level)
+            Xs, ys, Ks = self.gauss_mixture(sample_size, prj_dim, n_components, **src_properties, **kwargs)
+            Xt, yt, Kt = self.gauss_mixture(sample_size, prj_dim, n_components, **target_properties, **kwargs)
+            Xt[:, 0] = -Xt[:, 0]
+            K = [(Ks[i], Kt[i]) for i in range(len(Ks))][:n_keypoints]
+            
+            Xs_ = Xs
+            Xt_ = Xt
+            #Xs_ = self.add_noise_dim(Xs, prj_dim-hyperplane_dim, noise_level=noise_level)
+            #Xt_ = self.add_noise_dim(Xt, prj_dim-hyperplane_dim, noise_level=noise_level)
 
             for model_id, model in self.model.items():
                 start = time.time()
-                acc = self.run(Xs_, Xt_, ys, yt, model, K=K)
-    
+                ys_pred = self.run(Xs_, Xt_, ys, yt, model, K=K)
+                acc = self.accuracy(ys_pred, ys)
+
+                if prj_dim == hyperplane_dim:
+                    P0[model_id] = model.P_
+                    dev = 0
+                else:
+                    dev = np.linalg.norm(model.P_ - P0[model_id]) / np.linalg.norm(P0[model_id])
+
+                self.record_[self.exp_name][model_id]["deviation"].append(float(dev))
                 self.record_[self.exp_name][model_id]["dimension"].append(prj_dim)
                 self.record_[self.exp_name][model_id]["accuracy"].append(acc)
                 self.record_[self.exp_name][model_id]["runtime"].append(time.time() - start)
             
+            dev_log = {model_id: self.record_[self.exp_name][model_id]["deviation"][-1] for model_id in self.record_[self.exp_name]}
             acc_log = {model_id: self.record_[self.exp_name][model_id]["accuracy"][-1] for model_id in self.record_[self.exp_name]}
             runtime_log = {model_id: self.record_[self.exp_name][model_id]["runtime"][-1] for model_id in self.record_[self.exp_name]}
-            self.checkpoint()
-            self.logger.info(f"Dimension: {prj_dim}, Accuracy: {acc_log}, Runtime: {runtime_log}")
+            if is_checkpoint:
+                self.checkpoint()
+            self.logger.info(f"Dimension: {prj_dim}, Accuracy: {acc_log}, Deviation: {dev_log}, Runtime: {runtime_log}")
 
         self.plot(x_axis="dimension", y_axis="accuracy")
         return self.record_[self.exp_name]
@@ -193,39 +188,73 @@ class OutlierRate(Robustness):
         log_dir: str,
     ):
         super().__init__(model, exp_name="outlier_rate", log_dir=log_dir)
+    
+    @classmethod
+    def add_noise_plane(
+        cls, X: np.ndarray, y:np.ndarray, means: np.ndarray, 
+        prop_noised: float = 1, intensity: float = 0.5
+    ) -> np.ndarray:
+        if prop_noised == 0:
+            return X
+        inds = np.arange(X.shape[0])
+        np.random.shuffle(inds)
+        inds = inds[:int(prop_noised * X.shape[0])]
+        X_ = X.copy()
+        X_[inds] = X[inds] + np.random.normal(
+            scale= np.sqrt(intensity * np.square(means[y[inds].astype("int64")])), 
+            size=(len(inds), X.shape[1])
+        )
+        return X_
 
     def __call__(
         self,
+        intensity: float = 0.5,
         max_noise_ratio: float = 1,
         freq_noise_ratio: float = 0.1,
         hyperplane_dim: int = 30,
         cluster_samples: int = 100,
         n_keypoints: Optional[int] = 4,
         n_components: int = 4,
+        src_properties: Dict = {"cluster_distance": 1, "cluster_sparity": 0.1},
+        target_properties: Dict = {"cluster_distance": 2, "cluster_sparity": 0.2},
+        is_checkpoint: bool = True,
         **kwargs
     ) -> Dict:
-        self.record_[self.exp_name] = {model_id: {"ratio": [], "accuracy": [], "runtime": []} for model_id in self.model}
+        self.record_[self.exp_name] = {model_id: {"ratio": [], "accuracy": [], "deviation": [], "runtime": []} for model_id in self.model}
 
         sample_size = n_components * cluster_samples
-        Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, **kwargs)
-        Xt, yt, Kt = Robustness.gaussMixture_meanRandom_covWishart(sample_size, hyperplane_dim, n_components, d_proj=hyperplane_dim, **kwargs)
-        K = [(Ks[i], Kt[i]) for i in range(len(Ks))][:n_keypoints]
+        P0 = {k: None for k in self.model.keys()}
 
         for noise_ratio in [freq_noise_ratio * i for i in range(int(max_noise_ratio // freq_noise_ratio) + 1)]:
-            Xs_ = Robustness.add_noise_plane(Xs, ys, Xs[Ks][np.argsort(ys[Ks])], noise_level=noise_ratio)
-            Xt_ = Robustness.add_noise_plane(Xt, yt, Xt[Kt][np.argsort(ys[Ks])], noise_level=noise_ratio)
+            Xs, ys, Ks = self.gauss_mixture(sample_size, hyperplane_dim, n_components, **src_properties, **kwargs)
+            Xt, yt, Kt = self.gauss_mixture(sample_size, hyperplane_dim, n_components, **target_properties, **kwargs)
+            K = [(Ks[i], Kt[i]) for i in range(len(Ks))][:n_keypoints]
+            
+            Xs_ = self.add_noise_plane(Xs, ys, Xs[Ks][np.argsort(ys[Ks])], prop_noised=noise_ratio, intensity=intensity)
+            Xt_ = self.add_noise_plane(Xt, yt, Xt[Kt][np.argsort(ys[Ks])], prop_noised=noise_ratio, intensity=intensity)
 
             for model_id, model in self.model.items():
                 start = time.time()
-                acc = self.run(Xs_, Xt_, ys, yt, model, K=K)
+                ys_pred = self.run(Xs_, Xt_, ys, yt, model, K=K)
+                acc = self.accuracy(ys_pred, ys)
+
+                if noise_ratio == 0:
+                    P0[model_id] = model.P_
+                    dev = 0
+                else:
+                    dev = np.linalg.norm(model.P_ - P0[model_id]) / np.linalg.norm(P0[model_id])
+
+                self.record_[self.exp_name][model_id]["deviation"].append(float(dev))
                 self.record_[self.exp_name][model_id]["ratio"].append(noise_ratio)
                 self.record_[self.exp_name][model_id]["accuracy"].append(acc)
                 self.record_[self.exp_name][model_id]["runtime"].append(time.time() - start)
 
+            dev_log = {model_id: self.record_[self.exp_name][model_id]["deviation"][-1] for model_id in self.record_[self.exp_name]}
             acc_log = {model_id: self.record_[self.exp_name][model_id]["accuracy"][-1] for model_id in self.record_[self.exp_name]}
             runtime_log = {model_id: self.record_[self.exp_name][model_id]["runtime"][-1] for model_id in self.record_[self.exp_name]}
-            self.checkpoint()
-            self.logger.info(f"Noise ratio: {noise_ratio}, Accuracy: {acc_log}, Runtime: {runtime_log}")
+            if is_checkpoint:
+                self.checkpoint()
+            self.logger.info(f"Noise ratio: {noise_ratio}, Accuracy: {acc_log}, Deviation: {dev_log}, Runtime: {runtime_log}")
 
         self.plot(x_axis="ratio", y_axis="accuracy")
         return self.record_[self.exp_name]
@@ -247,15 +276,16 @@ class ClusterMismatch(Robustness):
         hyperplane_dim: int = 30,
         cluster_samples: int = 100,
         n_keypoints: Optional[int] = 10,
-        src_properties: Optional[Dict] = None,
-        trg_properties: Optional[Dict] = None,
+        src_properties: Dict = {"cluster_distance": 1, "cluster_sparity": 0.1},
+        target_properties: Dict = {"cluster_distance": 1, "cluster_sparity": 0.1},
+        is_checkpoint: bool = True,
         **kwargs
     ) -> Dict:
         self.record_[self.exp_name] = {model_id: {"cluster": [], "accuracy": [], "runtime": []} for model_id in self.model}
         assert (target_components - min_source_components) % freq_components == 0
 
-        Xs, ys, Ks = Robustness.gaussMixture_meanRandom_covWishart(target_components * cluster_samples, hyperplane_dim, target_components, d_proj=hyperplane_dim, **src_properties, **kwargs)
-        Xt, yt, Kt = Robustness.gaussMixture_meanRandom_covWishart(target_components * cluster_samples, hyperplane_dim, target_components, d_proj=hyperplane_dim, **trg_properties, **kwargs)
+        Xs, ys, Ks = self.gauss_mixture(target_components * cluster_samples, hyperplane_dim, target_components, d_proj=hyperplane_dim, **src_properties, **kwargs)
+        Xt, yt, Kt = self.gauss_mixture(target_components * cluster_samples, hyperplane_dim, target_components, d_proj=hyperplane_dim, **target_properties, **kwargs)
         K = [(Ks[i], Kt[i]) for i in range(len(Ks))][:n_keypoints]
 
         for n_components in range(min_source_components, target_components+1, freq_components):
@@ -265,14 +295,17 @@ class ClusterMismatch(Robustness):
 
             for model_id, model in self.model.items():
                 start = time.time()
-                acc = self.run(Xs_, Xt, ys_, yt, model, K=K_, **kwargs)
+                ys_pred = self.run(Xs_, Xt, ys_, yt, model, K=K_)
+                acc = self.accuracy(ys_pred, ys_)
+
                 self.record_[self.exp_name][model_id]["cluster"].append(n_components)
                 self.record_[self.exp_name][model_id]["accuracy"].append(acc)
                 self.record_[self.exp_name][model_id]["runtime"].append(time.time() - start)
 
             acc_log = {model_id: self.record_[self.exp_name][model_id]["accuracy"][-1] for model_id in self.record_[self.exp_name]}
             runtime_log = {model_id: self.record_[self.exp_name][model_id]["runtime"][-1] for model_id in self.record_[self.exp_name]}
-            self.checkpoint()
+            if is_checkpoint:
+                self.checkpoint()
             self.logger.info(f"Number of source components: {n_components}, Accuracy: {acc_log}, Runtime: {runtime_log}")
 
         self.plot(x_axis="cluster", y_axis="accuracy")
