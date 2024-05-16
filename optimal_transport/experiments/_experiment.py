@@ -5,6 +5,7 @@ import logging
 import sys
 from typing import Any, Dict, List
 import json
+import numpy as np
 
 from ..models._ot import _OT
 
@@ -43,10 +44,20 @@ class Experiment:
         self.record_: Dict[str, Dict] = {}
 
 
-    def run(self, *args, **kwargs) -> Any:
+    def run(
+        self, 
+        xs: np.ndarray, xt: np.ndarray, 
+        a: np.ndarray, b: np.ndarray,
+        **kwargs
+    ) -> Any:
         pass
 
-    def plot(self, *args, **kwargs) -> Any:
+    def plot(
+        self, 
+        xs: np.ndarray, xt: np.ndarray,
+        a: np.ndarray, b: np.ndarray,
+        **kwargs
+    ) -> Any:
         pass
 
     def checkpoint(self):
