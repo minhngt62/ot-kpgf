@@ -3,6 +3,8 @@
 ## Abstract
 Optimal transport (OT) theory offers powerful framework for comparing probability distributions by minimizing the cost of transporting mass between them. Despite its board applicability in various fields of machine learning, the practical use of OT is hindered by its computational complexity and statistical performance in noisy, high-dimensional problems. Recent advances resolve these challenges by adding additional structural assumptions on transport with low-rank constraints on either cost/kernel matrices or the feasible set of couplings considered in OT. They serve the low-rank constraints by moving mass through small sets of intermediate points, instead of direct transportation between source and target distribution. However, such modelings impose a type of bottleneck and result in a loss of information that make the estimation of point-wise transport inaccurate. To address this bottleneck issue,  we thus introduce the concept of keypoint guidance to OT factorization. Our approach, **KFOT**, preserves the matching of keypoint pairs over factored couplings and then leverages the relation of each points to the keypoints for guidance towards the point-to-point matching. We show that **KFOT** inherits the robustness of factored OT in noisy, high-dimensional problems while be capable of mitigating the bottleneck issue caused by the factorization framework itself.
 
+![image](https://github.com/minhngt62/ot-kpgf/blob/main/assets/showcase.png)
+
 ## Get Started
 The dependencies are in [requirements.txt](https://github.com/minhngt62/ot-kpgf/blob/main/requirements.txt). Python 3.8 and above is recommended for the installation of the environment.
 ```
