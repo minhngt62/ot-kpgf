@@ -61,6 +61,7 @@ class KeypointFOT(_OT):
                 #print(f"Threshold reached at iteration {i}")
                 break
         
+        self.I_, self.J_, self.L_ = I, J, L
         self.Pa_ = Ms * Ps
         self.Pb_ = Mt * Pt
         self.P_ = np.dot(
