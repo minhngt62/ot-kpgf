@@ -12,4 +12,4 @@ pip install -r requirements.txt
 ```
 
 ## Experiments
-To reproduce the experiments, run the [`notebooks`](https://github.com/minhngt62/ot-kpgf/tree/main/notebooks), collect the results of each experiment in [`logs`](https://husteduvn-my.sharepoint.com/:u:/g/personal/minh_nt204885_sis_hust_edu_vn/EX8tWH_VzR5DpY0KMKn7InMBG7jp8lsDVo0ipnGkVaXjow?e=77Zesh) that corresponds to the experiment name. Then, for the visualization in documentation, please follow the [`0. Visualization.ipynb`](https://github.com/minhngt62/ot-kpgf/blob/main/notebooks/0.%20Visualization.ipynb).
+To reproduce the experiments, run the [`notebooks`](https://github.com/minhngt62/ot-kpgf/tree/main/notebooks), collect the results of each experiment in [`logs`](https://husteduvn-my.sharepoint.com/:u:/g/personal/minh_nt204885_sis_hust_edu_vn/EX8tWH_VzR5DpY0KMKn7InMBG7jp8lsDVo0ipnGkVaXjow?e=77Zesh) that corresponds to the experiment name. Then, for the visualization in documentation, please follow the [`0. Visualization.ipynb`](https://github.com/minhngt62/ot-kpgf/blob/main/notebooks/__0.%20Visualization.ipynb).
